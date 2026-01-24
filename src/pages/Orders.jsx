@@ -1,0 +1,241 @@
+import { useEffect, useState } from 'react'
+import { Eye } from 'lucide-react'
+import { api } from '../store/authStore'
+import toast from 'react-hot-toast'
+
+const Orders = () => {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    try {
+      const { data } = await api.get('/orders')
+      setOrders(data.data || [])
+    } catch (error) {
+      toast.error('Ошибка загрузки заказов')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateStatus = async (orderId, newStatus) => {
+    try {
+      await api.put(`/orders/${orderId}/status`, { orderStatus: newStatus })
+      toast.success('Статус обновлен')
+      fetchOrders()
+      if (selectedOrder?._id === orderId) {
+        setSelectedOrder(null)
+      }
+    } catch (error) {
+      toast.error('Ошибка обновления статуса')
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      new: { text: 'Новый', class: 'bg-blue-100 text-blue-800' },
+      processing: { text: 'В обработке', class: 'bg-yellow-100 text-yellow-800' },
+      shipped: { text: 'Отправлен', class: 'bg-purple-100 text-purple-800' },
+      delivered: { text: 'Доставлен', class: 'bg-green-100 text-green-800' },
+      cancelled: { text: 'Отменен', class: 'bg-red-100 text-red-800' },
+    }
+    const s = statusMap[status] || statusMap.new
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.class}`}>
+        {s.text}
+      </span>
+    )
+  }
+
+  const getPaymentBadge = (status) => {
+    const statusMap = {
+      pending: { text: 'Ожидает', class: 'bg-gray-100 text-gray-800' },
+      paid: { text: 'Оплачено', class: 'bg-green-100 text-green-800' },
+      failed: { text: 'Ошибка', class: 'bg-red-100 text-red-800' },
+      refunded: { text: 'Возврат', class: 'bg-orange-100 text-orange-800' },
+    }
+    const s = statusMap[status] || statusMap.pending
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.class}`}>
+        {s.text}
+      </span>
+    )
+  }
+
+  if (loading) {
+    return <div className="text-center py-12">Загрузка...</div>
+  }
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-primary mb-8">Заказы</h1>
+
+      {orders.length > 0 ? (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-3 px-4">Номер заказа</th>
+                  <th className="text-left py-3 px-4">Клиент</th>
+                  <th className="text-left py-3 px-4">Сумма</th>
+                  <th className="text-left py-3 px-4">Статус заказа</th>
+                  <th className="text-left py-3 px-4">Оплата</th>
+                  <th className="text-left py-3 px-4">Дата</th>
+                  <th className="text-left py-3 px-4">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order._id} className="border-t hover:bg-gray-50">
+                    <td className="py-3 px-4 font-mono text-sm">
+                      {order.orderNumber}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium">
+                          {order.customer.firstName} {order.customer.lastName}
+                        </p>
+                        <p className="text-sm text-gray-600">{order.customer.email}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-semibold">
+                      {order.totalAmount.toLocaleString('ru-RU')} ₽
+                    </td>
+                    <td className="py-3 px-4">{getStatusBadge(order.orderStatus)}</td>
+                    <td className="py-3 px-4">{getPaymentBadge(order.paymentStatus)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      {new Date(order.createdAt).toLocaleDateString('ru-RU')}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="card p-12 text-center">
+          <p className="text-gray-600">Заказов пока нет</p>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Заказ {selectedOrder.orderNumber}</h2>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Customer Info */}
+              <div>
+                <h3 className="font-bold mb-2">Информация о клиенте</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-1 text-sm">
+                  <p>
+                    <strong>Имя:</strong> {selectedOrder.customer.firstName}{' '}
+                    {selectedOrder.customer.lastName}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {selectedOrder.customer.email}
+                  </p>
+                  <p>
+                    <strong>Телефон:</strong> {selectedOrder.customer.phone}
+                  </p>
+                </div>
+              </div>
+
+              {/* Shipping Info */}
+              <div>
+                <h3 className="font-bold mb-2">Адрес доставки</h3>
+                <div className="bg-gray-50 rounded-lg p-4 text-sm">
+                  <p>{selectedOrder.shipping.address}</p>
+                  <p>
+                    {selectedOrder.shipping.city}, {selectedOrder.shipping.postalCode}
+                  </p>
+                  <p>{selectedOrder.shipping.country}</p>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <h3 className="font-bold mb-2">Товары</h3>
+                <div className="space-y-2">
+                  {selectedOrder.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-3 bg-gray-50 rounded-lg p-3"
+                    >
+                      <img
+                        src={item.image || '/placeholder.jpg'}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {item.quantity} x {item.price.toLocaleString('ru-RU')} ₽
+                        </p>
+                      </div>
+                      <div className="font-bold">
+                        {(item.price * item.quantity).toLocaleString('ru-RU')} ₽
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t mt-4 pt-4 text-right">
+                  <p className="text-xl font-bold">
+                    Итого: {selectedOrder.totalAmount.toLocaleString('ru-RU')} ₽
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Update */}
+              <div>
+                <h3 className="font-bold mb-2">Обновить статус</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['new', 'processing', 'shipped', 'delivered', 'cancelled'].map(
+                    (status) => (
+                      <button
+                        key={status}
+                        onClick={() => updateStatus(selectedOrder._id, status)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                          selectedOrder.orderStatus === status
+                            ? 'bg-accent text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {getStatusBadge(status).props.children}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default Orders

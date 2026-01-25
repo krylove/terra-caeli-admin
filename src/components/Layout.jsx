@@ -18,7 +18,7 @@ const Layout = () => {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-primary">Vases Admin</h1>
+          <h1 className="text-2xl font-bold text-primary">Terra Admin</h1>
           <p className="text-sm text-gray-600 mt-1">Панель управления</p>
         </div>
 

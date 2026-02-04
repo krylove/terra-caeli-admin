@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://terra-caeli-backend.onrender.com/api/:path*"
+      "destination": "https://api.terracaeli.ru/api/:path*"
     },
     {
       "source": "/(.*)",

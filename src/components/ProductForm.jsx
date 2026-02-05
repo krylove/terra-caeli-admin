@@ -26,20 +26,47 @@ const ProductForm = ({ product, categories, onClose, onSuccess }) => {
     })
   }
 
+  // Валидация файла перед загрузкой
+  const validateFile = (file) => {
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+    if (file.size > maxSize) {
+      toast.error(`Файл ${file.name} слишком большой (макс 5MB)`)
+      return false
+    }
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(`Файл ${file.name} имеет неподдерживаемый формат. Используйте JPEG, PNG, WebP или GIF`)
+      return false
+    }
+    return true
+  }
+
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
 
+    // Ограничение на количество файлов
+    if (files.length > 10) {
+      toast.error('Можно загрузить не более 10 изображений за раз')
+      return
+    }
+
+    // Валидация всех файлов
+    const validFiles = files.filter(file => validateFile(file))
+    if (validFiles.length === 0) return
+
     setUploading(true)
     const formDataUpload = new FormData()
 
-    files.forEach((file) => {
+    validFiles.forEach((file) => {
       formDataUpload.append('images', file)
     })
 
     try {
       const { data } = await api.post('/upload/multiple', formDataUpload, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000, // 60 секунд для загрузки файлов
       })
 
       if (data.success) {
@@ -47,10 +74,15 @@ const ProductForm = ({ product, categories, onClose, onSuccess }) => {
           ...formData,
           images: [...formData.images, ...data.urls],
         })
-        toast.success('Изображения загружены')
+        toast.success(`Загружено ${validFiles.length} изображений`)
       }
     } catch (error) {
-      toast.error('Ошибка загрузки изображений')
+      const errorMsg = error.response?.status === 413
+        ? 'Файлы слишком большие'
+        : error.response?.status === 415
+        ? 'Неподдерживаемый формат файла'
+        : 'Ошибка загрузки изображений'
+      toast.error(errorMsg)
     } finally {
       setUploading(false)
     }

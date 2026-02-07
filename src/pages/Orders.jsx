@@ -36,6 +36,19 @@ const Orders = () => {
     }
   }
 
+  const updatePaymentStatus = async (orderId, newStatus) => {
+    try {
+      await api.put(`/orders/${orderId}/status`, { paymentStatus: newStatus })
+      toast.success(newStatus === 'paid' ? 'Оплата подтверждена' : 'Статус оплаты обновлен')
+      fetchOrders()
+      if (selectedOrder?._id === orderId) {
+        setSelectedOrder(null)
+      }
+    } catch (error) {
+      toast.error('Ошибка обновления статуса оплаты')
+    }
+  }
+
   const getStatusBadge = (status) => {
     const statusMap = {
       new: { text: 'Новый', class: 'bg-blue-100 text-blue-800' },
@@ -211,7 +224,7 @@ const Orders = () => {
 
               {/* Status Update */}
               <div>
-                <h3 className="font-bold mb-2">Обновить статус</h3>
+                <h3 className="font-bold mb-2">Статус заказа</h3>
                 <div className="flex flex-wrap gap-2">
                   {['new', 'processing', 'shipped', 'delivered', 'cancelled'].map(
                     (status) => (
@@ -225,6 +238,30 @@ const Orders = () => {
                         }`}
                       >
                         {getStatusBadge(status).props.children}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Status Update */}
+              <div>
+                <h3 className="font-bold mb-2">Статус оплаты</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['pending', 'paid', 'refunded'].map(
+                    (status) => (
+                      <button
+                        key={status}
+                        onClick={() => updatePaymentStatus(selectedOrder._id, status)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                          selectedOrder.paymentStatus === status
+                            ? status === 'paid' ? 'bg-green-600 text-white'
+                              : status === 'refunded' ? 'bg-orange-500 text-white'
+                              : 'bg-gray-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {getPaymentBadge(status).props.children}
                       </button>
                     )
                   )}

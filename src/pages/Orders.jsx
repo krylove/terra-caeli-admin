@@ -215,8 +215,12 @@ const Orders = () => {
 
               {/* Shipping Info */}
               <div>
-                <h3 className="font-bold mb-2">Адрес доставки</h3>
-                <div className="bg-gray-50 rounded-lg p-4 text-sm">
+                <h3 className="font-bold mb-2">Доставка</h3>
+                <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+                  <p>
+                    <strong>Способ:</strong>{' '}
+                    {{ own_courier: 'Курьер по Москве и МО', cdek_pvz: 'СДЭК ПВЗ', cdek_courier: 'СДЭК Курьер', post: 'Почта России' }[selectedOrder.shipping?.method] || selectedOrder.shipping?.method || '—'}
+                  </p>
                   <p>{selectedOrder.shipping.address}</p>
                   <p>
                     {selectedOrder.shipping.city}, {selectedOrder.shipping.postalCode}

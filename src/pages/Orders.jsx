@@ -204,6 +204,12 @@ const Orders = () => {
                   <p>
                     <strong>Телефон:</strong> {selectedOrder.customer.phone}
                   </p>
+                  <p>
+                    <strong>Оплата:</strong>{' '}
+                    {selectedOrder.paymentMethod === 'cash_courier'
+                      ? 'Наличными курьеру'
+                      : 'СБП'}
+                  </p>
                 </div>
               </div>
 

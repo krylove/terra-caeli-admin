@@ -65,7 +65,6 @@ const ProductForm = ({ product, categories, onClose, onSuccess }) => {
 
     try {
       const { data } = await api.post('/upload/multiple', formDataUpload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000, // 60 секунд для загрузки файлов
       })
 

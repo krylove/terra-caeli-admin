@@ -26,9 +26,6 @@ export const useAuthStore = create(
               isAuthenticated: true,
             })
 
-            // Устанавливаем токен для всех запросов
-            api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-
             return { success: true }
           }
 
@@ -56,8 +53,6 @@ export const useAuthStore = create(
               isAuthenticated: true,
             })
 
-            api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-
             return { success: true }
           }
 
@@ -76,15 +71,6 @@ export const useAuthStore = create(
           admin: null,
           isAuthenticated: false,
         })
-        delete api.defaults.headers.common['Authorization']
-      },
-
-      getApi: () => {
-        const token = get().token
-        if (token) {
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        }
-        return api
       },
     }),
     {
@@ -93,10 +79,13 @@ export const useAuthStore = create(
   )
 )
 
-// Устанавливаем токен при загрузке, если он есть
-const token = useAuthStore.getState().token
-if (token) {
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-}
+// Интерцептор: подставляет токен из store в каждый запрос
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export { api }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Eye } from 'lucide-react'
+import { Eye, Send, Package } from 'lucide-react'
 import { api } from '../store/authStore'
 import toast from 'react-hot-toast'
 
@@ -7,6 +7,9 @@ const Orders = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [paymentLinkInput, setPaymentLinkInput] = useState('')
+  const [trackingInput, setTrackingInput] = useState('')
+  const [sendingPaymentLink, setSendingPaymentLink] = useState(false)
 
   useEffect(() => {
     fetchOrders()
@@ -23,14 +26,23 @@ const Orders = () => {
     }
   }
 
+  const openOrder = (order) => {
+    setSelectedOrder(order)
+    setPaymentLinkInput(order.paymentLink || '')
+    setTrackingInput(order.trackingNumber || '')
+  }
+
   const updateStatus = async (orderId, newStatus) => {
     try {
-      await api.put(`/orders/${orderId}/status`, { orderStatus: newStatus })
-      toast.success('Статус обновлен')
-      fetchOrders()
-      if (selectedOrder?._id === orderId) {
-        setSelectedOrder(null)
+      const body = { orderStatus: newStatus }
+      // При смене на "Отправлен" отправляем трек-номер если заполнен
+      if (newStatus === 'shipped' && trackingInput.trim()) {
+        body.trackingNumber = trackingInput.trim()
       }
+      await api.put(`/orders/${orderId}/status`, body)
+      toast.success(newStatus === 'shipped' ? 'Заказ отправлен, клиент уведомлён' : 'Статус обновлён')
+      fetchOrders()
+      setSelectedOrder(null)
     } catch (error) {
       toast.error('Ошибка обновления статуса')
     }
@@ -39,13 +51,31 @@ const Orders = () => {
   const updatePaymentStatus = async (orderId, newStatus) => {
     try {
       await api.put(`/orders/${orderId}/status`, { paymentStatus: newStatus })
-      toast.success(newStatus === 'paid' ? 'Оплата подтверждена' : 'Статус оплаты обновлен')
+      toast.success(newStatus === 'paid' ? 'Оплата подтверждена' : 'Статус оплаты обновлён')
       fetchOrders()
-      if (selectedOrder?._id === orderId) {
-        setSelectedOrder(null)
-      }
+      setSelectedOrder(null)
     } catch (error) {
       toast.error('Ошибка обновления статуса оплаты')
+    }
+  }
+
+  const sendPaymentLink = async (orderId) => {
+    if (!paymentLinkInput.trim()) {
+      toast.error('Вставьте ссылку на оплату')
+      return
+    }
+    setSendingPaymentLink(true)
+    try {
+      await api.post(`/orders/${orderId}/send-payment-link`, {
+        paymentLink: paymentLinkInput.trim()
+      })
+      toast.success('Ссылка на оплату отправлена клиенту на email')
+      fetchOrders()
+      setSelectedOrder(null)
+    } catch (error) {
+      toast.error('Ошибка отправки ссылки')
+    } finally {
+      setSendingPaymentLink(false)
     }
   }
 
@@ -127,7 +157,7 @@ const Orders = () => {
                     </td>
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => setSelectedOrder(order)}
+                        onClick={() => openOrder(order)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                       >
                         <Eye size={18} />
@@ -189,6 +219,24 @@ const Orders = () => {
                 </div>
               </div>
 
+              {/* Tracking Number */}
+              <div>
+                <h3 className="font-bold mb-2 flex items-center gap-2">
+                  <Package size={18} />
+                  Трек-номер
+                </h3>
+                <input
+                  type="text"
+                  value={trackingInput}
+                  onChange={(e) => setTrackingInput(e.target.value)}
+                  placeholder="Введите трек-номер отправления"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Трек-номер будет отправлен клиенту при смене статуса на «Отправлен»
+                </p>
+              </div>
+
               {/* Order Items */}
               <div>
                 <h3 className="font-bold mb-2">Товары</h3>
@@ -220,6 +268,35 @@ const Orders = () => {
                     Итого: {selectedOrder.totalAmount.toLocaleString('ru-RU')} ₽
                   </p>
                 </div>
+              </div>
+
+              {/* Payment Link */}
+              <div>
+                <h3 className="font-bold mb-2 flex items-center gap-2">
+                  <Send size={18} />
+                  Ссылка на оплату (СБП)
+                </h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={paymentLinkInput}
+                    onChange={(e) => setPaymentLinkInput(e.target.value)}
+                    placeholder="Вставьте ссылку на оплату из банка"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  />
+                  <button
+                    onClick={() => sendPaymentLink(selectedOrder._id)}
+                    disabled={sendingPaymentLink || !paymentLinkInput.trim()}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {sendingPaymentLink ? 'Отправка...' : selectedOrder.paymentLink ? 'Отправить повторно' : 'Отправить клиенту'}
+                  </button>
+                </div>
+                {selectedOrder.paymentLink && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Ссылка уже отправлена ранее
+                  </p>
+                )}
               </div>
 
               {/* Status Update */}
